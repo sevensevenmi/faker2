@@ -3,7 +3,7 @@
 
 Faker维护仓库，收集全网目前能正常使用的脚本。
 
-#### 每日更新 TG群:https://t.me/jdscrip
+#### [点击直达频道](https://t.me/pandaqx)
 
 [![Anurag's GitHub stats](https://github-readme-stats.vercel.app/api?username=shufflewzc&bg_color=30,e96443,904e95&title_color=fff&text_color=fff)](https://github.com/anuraghazra/github-readme-stats)
 
@@ -12,7 +12,7 @@ Faker维护仓库，收集全网目前能正常使用的脚本。
 
 
 【Faker集合仓库】
-ql repo https://ghproxy.com/https://github.com/shufflewzc/faker2.git "jd_|jx_|gua_|jddj_|getJDCookie" "activity|backUp" "^jd[^_]|USER|function|utils|ZooFaker_Necklace.js|JDJRValidator_Pure|sign_graphics_validate|ql"
+ql repo https://ghproxy.com/https://github.com/shufflewzc/faker2.git "jd_|jx_|gua_|jddj_|getJDCookie" "activity|backUp" "^jd[^_]|USER|function|utils|sendnotify|ZooFaker_Necklace.js|JDJRValidator_Pure|sign_graphics_validate|ql"
 
 【圈x订阅地址】
 

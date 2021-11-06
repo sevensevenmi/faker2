@@ -86,6 +86,20 @@ let PUSH_PLUS_TOKEN = '';
 let PUSH_PLUS_USER = '';
 let PUSH_PLUS_TOKEN_hxtrip = '';
 let PUSH_PLUS_USER_hxtrip = '';
+
+// ======================================= WxPusher 通知设置区域 ===========================================
+// 此处填你申请的 appToken. 官方文档：https://wxpusher.zjiecode.com/docs
+// WP_APP_TOKEN 可在管理台查看: https://wxpusher.zjiecode.com/admin/main/app/appToken
+// WP_TOPICIDS 群发, 发送目标的 topicId, 以 ; 分隔! 使用 WP_UIDS 单发的时候, 可以不传
+// WP_UIDS 发送目标的 uid, 以 ; 分隔。注意 WP_UIDS 和 WP_TOPICIDS 可以同时填写, 也可以只填写一个。
+// WP_URL 原文链接, 可选参数
+let WP_APP_TOKEN = "";
+let WP_TOPICIDS = "";
+let WP_UIDS = "";
+let WP_URL = "";
+
+let WP_APP_TOKEN_ONE = "";
+let WP_UIDS_ONE = "";
 /**
  * sendNotify 推送通知功能
  * @param text 通知头
@@ -116,12 +130,25 @@ if (Fileexists) {
 		TempCK = JSON.parse(TempCK);
 	}
 }
+let strUidFile = './CK_WxPusherUid.json';
+let UidFileexists = fs.existsSync(strUidFile);
+let TempCKUid = [];
+if (UidFileexists) {
+	console.log("检测到WxPusherUid文件，载入...");
+	TempCKUid = fs.readFileSync(strUidFile, 'utf-8');
+	if (TempCKUid) {
+		TempCKUid = TempCKUid.toString();
+		TempCKUid = JSON.parse(TempCKUid);
+	}
+}
+
 let tempAddCK = {};
 let boolneedUpdate = false;
 let strCustom = "";
 let strCustomArr = [];
 let strCustomTempArr = [];
 let Notify_CKTask = "";
+let Notify_SkipText = [];
 async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By ccwav Mod') {
 	console.log(`开始发送通知...`);
 	try {
@@ -152,6 +179,7 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 		PUSH_PLUS_TOKEN_hxtrip = '';
 		PUSH_PLUS_USER_hxtrip = '';
 		Notify_CKTask = "";
+		Notify_SkipText = [];
 
 		//变量开关
 		var Use_serverNotify = true;
@@ -164,10 +192,12 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 		var Use_iGotNotify = true;
 		var Use_gobotNotify = true;
 		var Use_pushPlushxtripNotify = true;
+		var Use_WxPusher = true;
 
 		if (process.env.NOTIFY_NOCKFALSE) {
 			Notify_NoCKFalse = process.env.NOTIFY_NOCKFALSE;
 		}
+		strAuthor = "";
 		if (process.env.NOTIFY_AUTHOR) {
 			strAuthor = process.env.NOTIFY_AUTHOR;
 		}
@@ -181,9 +211,16 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 			Notify_CKTask = process.env.NOTIFY_CKTASK;
 		}
 
-		if (text.indexOf("忘了种植") != -1) {
-			console.log(`东东农场没有种植，不推送`);
-			return;
+		if (process.env.NOTIFY_SKIP_TEXT && desp) {
+			Notify_SkipText = process.env.NOTIFY_SKIP_TEXT.split('&');
+			if (Notify_SkipText.length > 0) {
+				for (var Templ in Notify_SkipText) {					
+					if (desp.indexOf(Notify_SkipText[Templ]) != -1) {
+						console.log("检测内容到内容存在屏蔽推送的关键字(" + Notify_SkipText[Templ] + ")，将跳过推送...");
+						return;
+					}
+				}
+			}
 		}
 
 		if (text.indexOf("cookie已失效") != -1 || desp.indexOf("重新登录获取") != -1 || text == "Ninja 运行通知") {
@@ -237,6 +274,7 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 				console.log(`${text} 在领取信息黑名单中，已跳过推送`);
 				return;
 			}
+
 		} else {
 			strTitle = text;
 		}
@@ -372,6 +410,11 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 									Use_gobotNotify = true;
 									console.log("自定义设定启用go-cqhttp进行通知...");
 									break;
+								case "WxPusher":
+									Use_WxPusher = true;
+									console.log("自定义设定启用WxPusher进行通知...");
+									break;
+
 								}
 							}
 
@@ -402,6 +445,21 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 				SCKEY = process.env.PUSH_KEY;
 			}
 
+			if (process.env.WP_APP_TOKEN && Use_WxPusher) {
+				WP_APP_TOKEN = process.env.WP_APP_TOKEN;
+			}
+
+			if (process.env.WP_TOPICIDS && Use_WxPusher) {
+				WP_TOPICIDS = process.env.WP_TOPICIDS;
+			}
+
+			if (process.env.WP_UIDS && Use_WxPusher) {
+				WP_UIDS = process.env.WP_UIDS;
+			}
+
+			if (process.env.WP_URL && Use_WxPusher) {
+				WP_URL = process.env.WP_URL;
+			}
 			if (process.env.BARK_PUSH && Use_BarkNotify) {
 				if (process.env.BARK_PUSH.indexOf('https') > -1 || process.env.BARK_PUSH.indexOf('http') > -1) {
 					//兼容BARK自建用户
@@ -487,6 +545,21 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 				SCKEY = process.env.PUSH_KEY2;
 			}
 
+			if (process.env.WP_APP_TOKEN2 && Use_WxPusher) {
+				WP_APP_TOKEN = process.env.WP_APP_TOKEN2;
+			}
+
+			if (process.env.WP_TOPICIDS2 && Use_WxPusher) {
+				WP_TOPICIDS = process.env.WP_TOPICIDS2;
+			}
+
+			if (process.env.WP_UIDS2 && Use_WxPusher) {
+				WP_UIDS = process.env.WP_UIDS2;
+			}
+
+			if (process.env.WP_URL2 && Use_WxPusher) {
+				WP_URL = process.env.WP_URL2;
+			}
 			if (process.env.BARK_PUSH2 && Use_BarkNotify) {
 				if (process.env.BARK_PUSH2.indexOf('https') > -1 || process.env.BARK_PUSH2.indexOf('http') > -1) {
 					//兼容BARK自建用户
@@ -567,6 +640,22 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 				SCKEY = process.env.PUSH_KEY3;
 			}
 
+			if (process.env.WP_APP_TOKEN3 && Use_WxPusher) {
+				WP_APP_TOKEN = process.env.WP_APP_TOKEN3;
+			}
+
+			if (process.env.WP_TOPICIDS3 && Use_WxPusher) {
+				WP_TOPICIDS = process.env.WP_TOPICIDS3;
+			}
+
+			if (process.env.WP_UIDS3 && Use_WxPusher) {
+				WP_UIDS = process.env.WP_UIDS3;
+			}
+
+			if (process.env.WP_URL3 && Use_WxPusher) {
+				WP_URL = process.env.WP_URL3;
+			}
+
 			if (process.env.BARK_PUSH3 && Use_BarkNotify) {
 				if (process.env.BARK_PUSH3.indexOf('https') > -1 || process.env.BARK_PUSH3.indexOf('http') > -1) {
 					//兼容BARK自建用户
@@ -645,6 +734,22 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 
 			if (process.env.PUSH_KEY4 && Use_serverNotify) {
 				SCKEY = process.env.PUSH_KEY4;
+			}
+
+			if (process.env.WP_APP_TOKEN4 && Use_WxPusher) {
+				WP_APP_TOKEN = process.env.WP_APP_TOKEN4;
+			}
+
+			if (process.env.WP_TOPICIDS4 && Use_WxPusher) {
+				WP_TOPICIDS = process.env.WP_TOPICIDS4;
+			}
+
+			if (process.env.WP_UIDS4 && Use_WxPusher) {
+				WP_UIDS = process.env.WP_UIDS4;
+			}
+
+			if (process.env.WP_URL4 && Use_WxPusher) {
+				WP_URL = process.env.WP_URL4;
 			}
 
 			if (process.env.BARK_PUSH4 && Use_BarkNotify) {
@@ -728,6 +833,21 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 				SCKEY = process.env.PUSH_KEY5;
 			}
 
+			if (process.env.WP_APP_TOKEN5 && Use_WxPusher) {
+				WP_APP_TOKEN = process.env.WP_APP_TOKEN5;
+			}
+
+			if (process.env.WP_TOPICIDS5 && Use_WxPusher) {
+				WP_TOPICIDS = process.env.WP_TOPICIDS5;
+			}
+
+			if (process.env.WP_UIDS5 && Use_WxPusher) {
+				WP_UIDS = process.env.WP_UIDS5;
+			}
+
+			if (process.env.WP_URL5 && Use_WxPusher) {
+				WP_URL = process.env.WP_URL5;
+			}
 			if (process.env.BARK_PUSH5 && Use_BarkNotify) {
 				if (process.env.BARK_PUSH5.indexOf('https') > -1 || process.env.BARK_PUSH5.indexOf('http') > -1) {
 					//兼容BARK自建用户
@@ -808,6 +928,21 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 				SCKEY = process.env.PUSH_KEY6;
 			}
 
+			if (process.env.WP_APP_TOKEN6 && Use_WxPusher) {
+				WP_APP_TOKEN = process.env.WP_APP_TOKEN6;
+			}
+
+			if (process.env.WP_TOPICIDS6 && Use_WxPusher) {
+				WP_TOPICIDS = process.env.WP_TOPICIDS6;
+			}
+
+			if (process.env.WP_UIDS6 && Use_WxPusher) {
+				WP_UIDS = process.env.WP_UIDS6;
+			}
+
+			if (process.env.WP_URL6 && Use_WxPusher) {
+				WP_URL = process.env.WP_URL6;
+			}
 			if (process.env.BARK_PUSH6 && Use_BarkNotify) {
 				if (process.env.BARK_PUSH6.indexOf('https') > -1 || process.env.BARK_PUSH6.indexOf('http') > -1) {
 					//兼容BARK自建用户
@@ -920,7 +1055,7 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 							}
 							if (!$.FoundPin) {
 								//缓存文件中有没有这个账号，调用京东接口获取别名,并更新缓存文件
-								console.log($.UserName+"好像是新账号，尝试获取别名.....");
+								console.log($.UserName + "好像是新账号，尝试获取别名.....");
 								await GetnickName();
 								if (!$.nickName) {
 									console.log("别名获取失败，尝试调用另一个接口获取别名.....");
@@ -928,16 +1063,16 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 								}
 								if ($.nickName) {
 									console.log("好像是新账号，从接口获取别名" + $.nickName);
-									tempAddCK = {
-										"pt_pin": $.UserName,
-										"nickName": $.nickName
-									};
-									TempCK.push(tempAddCK);
-									//标识，需要更新缓存文件
-									boolneedUpdate = true;
-								} else{
-									console.log($.UserName+"别名获取失败.....");
+								} else {
+									console.log($.UserName + "该账号没有别名.....");
 								}
+								tempAddCK = {
+									"pt_pin": $.UserName,
+									"nickName": $.nickName
+								};
+								TempCK.push(tempAddCK);
+								//标识，需要更新缓存文件
+								boolneedUpdate = true;
 							}
 						}
 
@@ -1005,15 +1140,10 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 	await pushPlusNotifyhxtrip(text, desp); //pushplushxtrip(推送加)
 	if (PushErrorTime > 0) {
 		console.log("等待1分钟后重试.....");
-		await $.wait(60000 );
-		await pushPlusNotifyhxtrip(text, desp); 
-	}
-	if (PushErrorTime > 0) {
-		console.log("等待1分钟后重试.....");
 		await $.wait(60000);
-		await pushPlusNotifyhxtrip(text, desp); 
+		await pushPlusNotifyhxtrip(text, desp);
 	}
-	
+
 	if (PUSH_PLUS_TOKEN) {
 		console.log("PUSH_PLUS TOKEN :" + PUSH_PLUS_TOKEN);
 	}
@@ -1031,8 +1161,9 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 		console.log("等待1分钟后重试.....");
 		await $.wait(60000);
 		await pushPlusNotify(text, desp); //pushplus(推送加)
+
 	}
-	
+
 	//由于上述两种微信通知需点击进去才能查看到详情，故text(标题内容)携带了账号序号以及昵称信息，方便不点击也可知道是哪个京东哪个活动
 	text = text.match(/.*?(?=\s?-)/g) ? text.match(/.*?(?=\s?-)/g)[0] : text;
 	await Promise.all([
@@ -1043,17 +1174,138 @@ async function sendNotify(text, desp, params = {}, author = '\n\n本通知 By cc
 			qywxamNotify(text, desp), //企业微信应用消息推送
 			iGotNotify(text, desp, params), //iGot
 			gobotNotify(text, desp), //go-cqhttp
+			wxpusherNotify(text, desp) // wxpusher
 		]);
 }
 
+async function sendNotifybyWxPucher(text, desp, PtPin, author = '\n\n本通知 By ccwav Mod') {
+
+	try {
+		var Uid = "";
+		var UserRemark = [];
+		var llShowRemark = "false";
+		strAuthor = "";
+		if (process.env.NOTIFY_AUTHOR) {
+			strAuthor = process.env.NOTIFY_AUTHOR;
+		}		
+		WP_APP_TOKEN_ONE = "";
+		if (process.env.WP_APP_TOKEN_ONE) {
+			WP_APP_TOKEN_ONE = process.env.WP_APP_TOKEN_ONE;
+		}
+		if (process.env.WP_APP_ONE_TEXTSHOWREMARK) {
+			llShowRemark = process.env.WP_APP_ONE_TEXTSHOWREMARK;
+		}
+		if (WP_APP_TOKEN_ONE) {
+			if (TempCKUid) {
+				for (let j = 0; j < TempCKUid.length; j++) {
+					if (PtPin == decodeURIComponent(TempCKUid[j].pt_pin)) {
+						Uid = TempCKUid[j].Uid;
+					}
+				}
+			}
+			if (Uid) {
+				console.log("查询到Uid ：" + Uid);
+				WP_UIDS_ONE = Uid;
+				console.log("正在发送一对一通知,请稍后...");
+				if (strAuthor)
+					desp += '\n\n本通知 By ' + strAuthor;
+				else
+					desp += author;
+				
+				
+				if(llShowRemark=="true"){
+					//开始读取青龙变量列表
+					const envs = await getEnvs();
+					if (envs[0]) {
+						for (let i = 0; i < envs.length; i++) {
+							cookie = envs[i].value;
+							$.UserName = decodeURIComponent(cookie.match(/pt_pin=([^; ]+)(?=;?)/) && cookie.match(/pt_pin=([^; ]+)(?=;?)/)[1]);
+							if(PtPin!= $.UserName)
+								continue;
+							$.nickName = "";
+							$.Remark = envs[i].remarks || '';
+							$.FoundnickName = "";
+							$.FoundPin = "";
+							//判断有没有Remark，没有搞个屁，有的继续
+							if ($.Remark) {
+								console.log("正在处理账号Remark.....");
+								//先查找缓存文件中有没有这个账号，有的话直接读取别名
+								if (envs[i].status == 0) {
+									if (TempCK) {
+										for (let j = 0; j < TempCK.length; j++) {
+											if (TempCK[j].pt_pin == $.UserName) {
+												$.FoundPin = TempCK[j].pt_pin;
+												$.nickName = TempCK[j].nickName;
+											}
+										}
+									}
+									if (!$.FoundPin) {
+										//缓存文件中有没有这个账号，调用京东接口获取别名,并更新缓存文件
+										console.log($.UserName + "好像是新账号，尝试获取别名.....");
+										await GetnickName();
+										if (!$.nickName) {
+											console.log("别名获取失败，尝试调用另一个接口获取别名.....");
+											await GetnickName2();
+										}
+										if ($.nickName) {
+											console.log("好像是新账号，从接口获取别名" + $.nickName);
+										} else {
+											console.log($.UserName + "该账号没有别名.....");
+										}
+										tempAddCK = {
+											"pt_pin": $.UserName,
+											"nickName": $.nickName
+										};
+										TempCK.push(tempAddCK);
+										//标识，需要更新缓存文件
+										boolneedUpdate = true;
+									}
+								}
+
+								$.nickName = $.nickName || $.UserName;
+								//这是为了处理ninjia的remark格式
+								$.Remark = $.Remark.replace("remark=", "");
+								$.Remark = $.Remark.replace(";", "");
+								//开始替换内容中的名字
+								if (ShowRemarkType == "2") {
+									$.Remark = $.nickName + "(" + $.Remark + ")";
+								}
+								if (ShowRemarkType == "3") {
+									$.Remark = $.UserName + "(" + $.Remark + ")";
+								}								
+								text = text+ " (" + $.Remark + ")";
+								//console.log($.nickName+$.Remark);
+								console.log("处理完成，开始发送通知...");
+							}
+
+						}
+
+					}
+					
+				}
+				await wxpusherNotifyByOne(text, desp);
+			} else {
+				console.log("未查询到用户的Uid,取消一对一通知发送...");
+			}
+		} else {
+			console.log("变量WP_APP_TOKEN_ONE未配置WxPusher的appToken, 取消发送...");
+
+		}
+	} catch (error) {
+		console.error(error);
+	}
+
+}
 function gobotNotify(text, desp, time = 2100) {
 	return new Promise((resolve) => {
 		if (GOBOT_URL) {
 			const options = {
 				url: `${GOBOT_URL}?access_token=${GOBOT_TOKEN}&${GOBOT_QQ}`,
-				body: `message=${text}\n${desp}`,
+				json: {
+					message: `${text}\n${desp}`
+				},
 				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded',
+					'Content-Type': 'application/json',
 				},
 				timeout,
 			};
@@ -1598,6 +1850,110 @@ function pushPlusNotify(text, desp) {
 		}
 	});
 }
+function wxpusherNotifyByOne(text, desp) {
+	return new Promise((resolve) => {
+		if (WP_APP_TOKEN_ONE) {
+			var WPURL = "";
+			let uids = [];
+			for (let i of WP_UIDS_ONE.split(";")) {
+				if (i.length != 0)
+					uids.push(i);
+			};
+			let topicIds = [];
+			const body = {
+				appToken: `${WP_APP_TOKEN_ONE}`,
+				content: `${text}\n\n${desp}`,
+				summary: `${text}`,
+				contentType: 1,
+				topicIds: topicIds,
+				uids: uids,
+				url: `${WPURL}`,
+			};
+			const options = {
+				url: `http://wxpusher.zjiecode.com/api/send/message`,
+				body: JSON.stringify(body),
+				headers: {
+					"Content-Type": "application/json",
+				},
+				timeout,
+			};
+			$.post(options, (err, resp, data) => {
+				try {
+					if (err) {
+						console.log("WxPusher 发送通知调用 API 失败！！\n");
+						console.log(err);
+					} else {
+						data = JSON.parse(data);
+						if (data.code === 1000) {
+							console.log("WxPusher 发送通知消息成功!\n");
+						}
+					}
+				} catch (e) {
+					$.logErr(e, resp);
+				}
+				finally {
+					resolve(data);
+				}
+			});
+		} else {
+			resolve();
+		}
+	});
+}
+
+function wxpusherNotify(text, desp) {
+	return new Promise((resolve) => {
+		if (WP_APP_TOKEN) {
+			let uids = [];
+			for (let i of WP_UIDS.split(";")) {
+				if (i.length != 0)
+					uids.push(i);
+			};
+			let topicIds = [];
+			for (let i of WP_TOPICIDS.split(";")) {
+				if (i.length != 0)
+					topicIds.push(i);
+			};
+			const body = {
+				appToken: `${WP_APP_TOKEN}`,
+				content: `${text}\n\n${desp}`,
+				summary: `${text}`,
+				contentType: 1,
+				topicIds: topicIds,
+				uids: uids,
+				url: `${WP_URL}`,
+			};
+			const options = {
+				url: `http://wxpusher.zjiecode.com/api/send/message`,
+				body: JSON.stringify(body),
+				headers: {
+					"Content-Type": "application/json",
+				},
+				timeout,
+			};
+			$.post(options, (err, resp, data) => {
+				try {
+					if (err) {
+						console.log("WxPusher 发送通知调用 API 失败！！\n");
+						console.log(err);
+					} else {
+						data = JSON.parse(data);
+						if (data.code === 1000) {
+							console.log("WxPusher 发送通知消息成功!\n");
+						}
+					}
+				} catch (e) {
+					$.logErr(e, resp);
+				}
+				finally {
+					resolve(data);
+				}
+			});
+		} else {
+			resolve();
+		}
+	});
+}
 
 function GetDateTime(date) {
 
@@ -1720,6 +2076,7 @@ function GetnickName2() {
 
 module.exports = {
 	sendNotify,
+	sendNotifybyWxPucher,
 	BARK_PUSH,
 };
 
